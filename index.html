@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vastgoed calculator — 2e eigendom België</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f4f0;color:#1a1a18;font-size:15px;line-height:1.6}
+.page{max-width:960px;margin:0 auto;padding:2rem 1.5rem 4rem}
+h1{font-size:22px;font-weight:500;margin-bottom:.25rem}
+.subtitle{font-size:14px;color:#5f5e5a;margin-bottom:2rem}
+.st{font-size:12px;font-weight:500;color:#888780;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
+.card{background:#fff;border:.5px solid rgba(0,0,0,.12);border-radius:12px;padding:1.2rem 1.4rem}
+.params-box{background:#f1efe8;border-radius:12px;padding:1.2rem 1.4rem;margin-bottom:1.5rem}
+.slider-row{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:10px}
+.slider-row label{color:#5f5e5a;min-width:195px}
+.slider-row input[type=range]{flex:1;max-width:150px;accent-color:#378ADD}
+.sval{font-weight:500;min-width:80px;color:#1a1a18;font-size:13px}
+.three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:1.5rem}
+.metric{background:#f1efe8;border-radius:8px;padding:10px 12px}
+.ml{font-size:12px;color:#5f5e5a;margin-bottom:3px}
+.mv{font-size:19px;font-weight:500}
+.ms{font-size:11px;color:#5f5e5a;margin-top:2px}
+.rt{width:100%;border-collapse:collapse;font-size:13px}
+.rt tr{border-bottom:.5px solid rgba(0,0,0,.08)}
+.rt tr:last-child{border-bottom:none}
+.rt td{padding:7px 3px;vertical-align:middle}
+.rt td:nth-child(2){text-align:right;font-weight:500;white-space:nowrap}
+.rt td:nth-child(3){text-align:right;padding-left:6px;width:24px}
+.rt .tr td{font-weight:500;border-top:1px solid rgba(0,0,0,.15);padding-top:10px;border-bottom:none}
+.rt .mu{color:#5f5e5a;font-weight:400;font-size:12px}
+.chip{font-size:11px;padding:3px 9px;border-radius:8px;font-weight:500;display:inline-block;margin-bottom:8px}
+.chip-a{background:#E6F1FB;color:#0C447C}
+.chip-b{background:#E1F5EE;color:#085041}
+.chip-c{background:#EEEDFE;color:#3C3489}
+.divider{border:none;border-top:.5px solid rgba(0,0,0,.1);margin:1.5rem 0}
+.infobox{background:#f1efe8;border-radius:8px;padding:11px 14px;font-size:12px;color:#5f5e5a;margin-top:10px;line-height:1.6}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:10px;font-size:12px;color:#5f5e5a;align-items:center}
+.section{margin-bottom:2rem}
+.be-row{display:flex;align-items:baseline;gap:8px;margin:6px 0;font-size:13px}
+.be-label{color:#5f5e5a;min-width:155px}
+.be-val{font-weight:500}
+.tab-bar{display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:7px 16px;border-radius:8px;border:.5px solid rgba(0,0,0,.2);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:#5f5e5a;transition:all .15s}
+.tab.active{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Formule uitklap */
+.frow{display:flex;align-items:center;gap:4px}
+.fbtn{background:none;border:none;cursor:pointer;color:#888780;font-size:13px;padding:1px 3px;border-radius:4px;line-height:1;transition:color .1s}
+.fbtn:hover{color:#378ADD}
+.fbox{display:none;background:#f1efe8;border-radius:8px;padding:10px 12px;font-size:12px;color:#5f5e5a;margin:4px 0 8px;line-height:1.7}
+.fbox.open{display:block}
+.rt .tr-ap td{font-weight:600;border-top:1px solid rgba(180,120,0,.25);padding-top:10px;border-bottom:none;background:#FFF8EC}
+.meerwaarde-row td{color:#854F0B!important;font-style:italic}
+.fbox .formula{font-family:monospace;background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;font-size:11px}
+
+/* Override input */
+.override-row{display:none;align-items:center;gap:6px;margin:4px 0 8px;font-size:12px}
+.override-row.open{display:flex}
+.override-row label{color:#5f5e5a}
+.override-row input[type=number]{width:110px;padding:3px 7px;border:.5px solid rgba(0,0,0,.2);border-radius:6px;font-size:12px;font-family:inherit}
+.override-row .reset{background:none;border:none;cursor:pointer;color:#888780;font-size:11px;text-decoration:underline}
+.obtn{background:none;border:.5px solid rgba(0,0,0,.15);cursor:pointer;color:#5f5e5a;font-size:11px;padding:2px 7px;border-radius:5px;line-height:1.4;transition:all .1s}
+.obtn:hover{border-color:#378ADD;color:#378ADD}
+.obtn.active{background:#E6F1FB;color:#0C447C;border-color:#0C447C}
+
+/* ── Mobile / iPhone ── */
+@media(max-width:640px){
+  .page{padding:1rem .9rem 4rem}
+  h1{font-size:18px}
+  .three-col{grid-template-columns:1fr}
+  .slider-row{flex-wrap:wrap;gap:6px}
+  .slider-row label{min-width:100%;font-size:13px}
+  .slider-row input[type=range]{flex:1;max-width:none;min-height:28px}
+  .sval{min-width:70px;font-size:13px}
+  .tab{padding:9px 14px;font-size:13px;min-height:38px}
+  .tab-bar{gap:6px}
+  .params-box{padding:1rem .9rem}
+  .card{padding:1rem}
+  .rt td{padding:9px 3px}
+  .metric{padding:12px}
+  .ml{font-size:13px}
+  .mv{font-size:20px}
+  .fbtn,.obtn{min-width:28px;min-height:28px;font-size:14px}
+  .be-label{min-width:130px}
+  /* Prevent horizontal scroll */
+  .fbox .formula{word-break:break-all;font-size:10px}
+}
+@media(max-width:380px){
+  h1{font-size:16px}
+  .tab{padding:8px 10px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+<h1>Vastgoed calculator — 2e eigendom België</h1>
+<p class="subtitle">Vergelijking van drie scenario's · Klik op <strong>?</strong> voor berekeningsuitleg · Klik op <strong>✎</strong> om een bedrag manueel aan te passen</p>
+
+<!-- PARAMETERS -->
+<div class="section">
+<p class="st">Parameters</p>
+<div class="params-box">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:0 2.5rem">
+
+<div>
+<p style="font-size:12px;font-weight:500;color:#888780;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Scenario A</p>
+<div class="slider-row"><label>Aankoopprijs</label><input type="range" id="priceA" min="100000" max="500000" step="5000" value="250000"><span class="sval" id="priceA-out">€250.000</span></div>
+<div class="slider-row"><label>Eigen inbreng</label><input type="range" id="ownA" min="20000" max="200000" step="5000" value="100000"><span class="sval" id="ownA-out">€100.000</span></div>
+<div class="slider-row"><label>Huurprijs/mnd</label><input type="range" id="rentA" min="400" max="2000" step="25" value="900"><span class="sval" id="rentA-out">€900</span></div>
+</div>
+
+<div>
+<p style="font-size:12px;font-weight:500;color:#888780;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Scenario B</p>
+<div class="slider-row"><label>Aankoopprijs</label><input type="range" id="priceB" min="100000" max="600000" step="5000" value="250000"><span class="sval" id="priceB-out">€250.000</span></div>
+<div class="slider-row"><label>Eigen inbreng</label><input type="range" id="ownB" min="20000" max="200000" step="5000" value="100000"><span class="sval" id="ownB-out">€100.000</span></div>
+<div class="slider-row"><label>Huurprijs/mnd</label><input type="range" id="rentB" min="400" max="2500" step="25" value="900"><span class="sval" id="rentB-out">€900</span></div>
+</div>
+
+<div>
+<p style="font-size:12px;font-weight:500;color:#888780;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Scenario C</p>
+<div class="slider-row"><label>Aankoopprijs</label><input type="range" id="priceC" min="100000" max="600000" step="5000" value="250000"><span class="sval" id="priceC-out">€250.000</span></div>
+<div class="slider-row"><label>Eigen inbreng</label><input type="range" id="ownC" min="20000" max="200000" step="5000" value="100000"><span class="sval" id="ownC-out">€100.000</span></div>
+<div class="slider-row"><label>Huurprijs/mnd</label><input type="range" id="rentC" min="400" max="2500" step="25" value="900"><span class="sval" id="rentC-out">€900</span></div>
+</div>
+
+<div>
+<p style="font-size:12px;font-weight:500;color:#888780;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Gemeenschappelijk</p>
+<div class="slider-row"><label>Rentevoet lening</label><input type="range" id="rate" min="1.5" max="6" step="0.1" value="3.3"><span class="sval" id="rate-out">3,3%</span></div>
+<div class="slider-row"><label>Looptijd lening</label><input type="range" id="term" min="10" max="25" step="5" value="20"><span class="sval" id="term-out">20 jaar</span></div>
+<div class="slider-row"><label>Huurgroei/jaar</label><input type="range" id="rentGrowth" min="0" max="3" step="0.1" value="1.5"><span class="sval" id="rentGrowth-out">1,5%</span></div>
+<div class="slider-row"><label>Leegstand</label><input type="range" id="vacancy" min="0" max="20" step="1" value="5"><span class="sval" id="vacancy-out">5%</span></div>
+<div class="slider-row"><label>Vastgoedgroei/jaar</label><input type="range" id="appRate" min="0" max="5" step="0.1" value="2"><span class="sval" id="appRate-out">2,0%</span></div>
+<div class="slider-row"><label>Horizon (jaren)</label><input type="range" id="horizon" min="5" max="40" step="1" value="30"><span class="sval" id="horizon-out">30 jaar</span></div>
+<div class="slider-row"><label>Vaste kosten A/mnd</label><input type="range" id="fixA" min="100" max="600" step="25" value="275"><span class="sval" id="fixA-out">€275</span></div>
+<div class="slider-row"><label>Vaste kosten B+C/mnd</label><input type="range" id="fixBC" min="100" max="700" step="25" value="350"><span class="sval" id="fixBC-out">€350</span></div>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tab active" onclick="showTab('tab-kosten',this)">Aankoopkosten</button>
+  <button class="tab" onclick="showTab('tab-cashflow',this)" id="tab-btn-cashflow">Cashflow 30 jaar</button>
+  <button class="tab" onclick="showTab('tab-breakeven',this)">Breakeven</button>
+  <button class="tab" onclick="showTab('tab-balans',this)" id="tab-btn-balans">Balans na 30 jaar</button>
+</div>
+
+<!-- TAB 1 -->
+<div id="tab-kosten" class="tab-panel active">
+<p class="st">Aankoopkosten & financiering</p>
+<div class="three-col" id="kosten-cards"></div>
+<div class="infobox">Registratierechten 2e woning Vlaanderen = 12% — geen verlaagd tarief. Notariskosten zijn degressief berekend op de aankoopprijs (vaste formule, lichte vereenvoudiging t.o.v. werkelijke aktekosten). LTV = loan-to-value op de aankoopprijs alleen.</div>
+</div>
+
+<!-- TAB 2 -->
+<div id="tab-cashflow" class="tab-panel">
+<p class="st">Maandelijkse cashflow — jaar 1</p>
+<div class="three-col" id="cf-mo-cards"></div>
+<p class="st" id="cf-chart-title">Cumulatieve cashflow over 30 jaar</p>
+<div class="legend">
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#378ADD;border-radius:2px;display:inline-block"></span>Scenario A</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#1D9E75;border-radius:2px;display:inline-block"></span>Scenario B</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#7F77DD;border-radius:2px;display:inline-block"></span>Scenario C</span>
+</div>
+<div style="position:relative;width:100%;height:280px;margin-bottom:1rem"><canvas id="cfChart"></canvas></div>
+<div class="infobox" id="cf-infobox">Cashflow = huurinkomsten − leningskost − vaste kosten, cumulatief over 30 jaar. Meerwaarde bij verkoop is apart zichtbaar in de Balans-tab. Jaar 1–looptijd: lening loopt. Daarna: enkel vaste kosten en huurinkomsten.</div>
+</div>
+
+<!-- TAB 3 -->
+<div id="tab-breakeven" class="tab-panel">
+<p class="st">Breakevenmoment</p>
+<div class="three-col" id="be-yr-cards"></div>
+<p class="st" id="be-min-title">Minimale huurprijs voor breakeven na 30 jaar</p>
+<div class="three-col" id="be-min-cards"></div>
+<p class="st" style="margin-top:1rem">Minimale huurprijs per huurgroeipercentage</p>
+<div class="legend">
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#378ADD;border-radius:2px;display:inline-block"></span>Scenario A</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#1D9E75;border-radius:2px;display:inline-block"></span>Scenario B</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#7F77DD;border-radius:2px;display:inline-block"></span>Scenario C</span>
+</div>
+<div style="position:relative;width:100%;height:240px;margin-bottom:1rem"><canvas id="beChart"></canvas></div>
+</div>
+
+<!-- TAB 4: BALANS -->
+<div id="tab-balans" class="tab-panel">
+<p class="st" id="bal-title">Totaalbalans na 30 jaar — klik ? voor uitleg, ✎ om te overschrijven</p>
+<div class="three-col" id="bal-cards"></div>
+<p class="st" style="margin-top:1rem">Cashflow vs. indicatieve vastgoedwaarde</p>
+<div class="legend">
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#378ADD;border-radius:2px;display:inline-block"></span>Cashflow A</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#1D9E75;border-radius:2px;display:inline-block"></span>Cashflow B</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#7F77DD;border-radius:2px;display:inline-block"></span>Cashflow C</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;border-top:2px dashed #378ADD;display:inline-block"></span>Waarde A (indicatief bij verkoop)</span>
+  <span style="display:flex;align-items:center;gap:5px"><span style="width:18px;border-top:2px dashed #1D9E75;display:inline-block"></span>Waarde B/C</span>
+</div>
+<div style="position:relative;width:100%;height:280px;margin-bottom:1rem"><canvas id="balChart"></canvas></div>
+<div class="infobox">Vastgoedwaarde (gestippeld) is indicatief bij het ingestelde groeipercentage en <strong>alleen reëel bij verkoop</strong>. De cashflow (volle lijn) is wat effectief door uw handen ging.</div>
+</div>
+
+</div><!-- end .page -->
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmtE(v){return'€'+Math.round(Math.abs(v)).toLocaleString('nl-BE')}
+function fmtSign(v){return(v<0?'−':'+')+fmtE(v)}
+function pct(v){return v.toFixed(1).replace('.',',')+' %'}
+
+function notaryCost(p){
+  // degressief tarief notaris + hypotheekkosten (geschat)
+  if(p<=200000) return Math.round(p*0.018+800);
+  if(p<=350000) return Math.round(p*0.016+1200);
+  return Math.round(p*0.014+1800);
+}
+
+function calcFinancing(price,own){
+  const reg=Math.round(price*0.12);
+  const not=notaryCost(price);
+  const hyp=Math.round(price*0.012+500);
+  const costs=reg+not+hyp;
+  const rest=own-costs;
+  const loan=price-Math.max(0,rest);
+  return{loan,costs,reg,not,hyp,rest,own,price}
+}
+
+function calcMonthly(loan,rate,termYrs){
+  const r=rate/100/12,n=termYrs*12;
+  if(r===0)return loan/n;
+  return loan*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+}
+
+function calcCashflow(loan,mo,fix,costs,rentYr1,rentGrowth,vacancy,termYrs,years){
+  let cum=-costs,totRent=0,totLoan=0;
+  const ann=[];
+  for(let y=1;y<=years;y++){
+    const rent=rentYr1*Math.pow(1+rentGrowth/100,y-1);
+    const rentNet=rent*12*(1-vacancy/100);
+    const lc=y<=termYrs?mo*12:0;
+    totRent+=rentNet;totLoan+=lc;
+    cum+=rentNet-lc-fix*12;
+    ann.push(Math.round(cum));
+  }
+  return{ann,totRent:Math.round(totRent),totLoan:Math.round(totLoan),totFix:Math.round(fix*12*years)}
+}
+
+function findBreakeven(data,max){
+  for(let i=0;i<data.length&&i<max;i++)if(data[i]>=0)return i+1;
+  return null;
+}
+
+function findMinRent(loan,mo,fix,costs,rg,vac,termYrs,targetYrs){
+  let lo=0,hi=6000;
+  for(let i=0;i<50;i++){
+    const mid=(lo+hi)/2;
+    const d=calcCashflow(loan,mo,fix,costs,mid,rg,vac,termYrs,targetYrs);
+    if(d.ann[targetYrs-1]>=0)hi=mid;else lo=mid;
+  }
+  return Math.round(hi);
+}
+
+// ── Override state ────────────────────────────────────────────────────────────
+// keys: 'totRent_A', 'totLoan_A', 'totFix_A', 'costs_A', etc.
+const overrides={};
+
+function getVal(key,computed){
+  return key in overrides?overrides[key]:computed;
+}
+
+// ── Chart handles ─────────────────────────────────────────────────────────────
+const charts={};
+
+// ── Toggle helpers ─────────────────────────────────────────────────────────────
+function toggleF(id){
+  const el=document.getElementById(id);
+  el.classList.toggle('open');
+}
+function toggleO(key,computedVal,labelText,unit){
+  const rowId='ov-row-'+key;
+  const btnId='ov-btn-'+key;
+  const row=document.getElementById(rowId);
+  const btn=document.getElementById(btnId);
+  if(!row)return;
+  const isOpen=row.classList.toggle('open');
+  btn.classList.toggle('active',isOpen);
+  if(isOpen&&!(key in overrides)){
+    document.getElementById('ov-inp-'+key).value=Math.round(computedVal);
+  }
+}
+function applyOverride(key){
+  const inp=document.getElementById('ov-inp-'+key);
+  overrides[key]=parseFloat(inp.value)||0;
+  updateCharts();
+}
+function resetOverride(key){
+  delete overrides[key];
+  const row=document.getElementById('ov-row-'+key);
+  const btn=document.getElementById('ov-btn-'+key);
+  if(row)row.classList.remove('open');
+  if(btn)btn.classList.remove('active');
+  updateCharts();
+}
+
+// ── Build balans card HTML ─────────────────────────────────────────────────────
+function balCard(s,chipClass,label,cf,f,own,YRS,appRate){
+  const totRentCalc=cf.totRent;
+  const totLoanCalc=cf.totLoan;
+  const totFixCalc=cf.totFix;
+  const costsCalc=f.costs;
+  // Meerwaarde: eindwaarde na YRS jaar - aankoopprijs
+  const eindwaarde=Math.round(f.price*Math.pow(1+appRate/100,YRS));
+  const meerwaardeCalc=eindwaarde-f.price;
+
+  const totRent=getVal('totRent_'+s,totRentCalc);
+  const totLoan=getVal('totLoan_'+s,totLoanCalc);
+  const totFix=getVal('totFix_'+s,totFixCalc);
+  const costs=getVal('costs_'+s,costsCalc);
+  const meerwaarde=getVal('meerwaarde_'+s,meerwaardeCalc);
+
+  const net=totRent-totLoan-totFix-costs;
+  const netWithAp=net+meerwaarde;
+  const rec=net+own;
+  const recWithAp=netWithAp+own;
+
+  function row(key,computedVal,prefix,labelTxt,fboxHTML){
+    const val=getVal(key,computedVal);
+    const hasOv=key in overrides;
+    return`
+    <tr>
+      <td class="frow">
+        ${labelTxt}
+        <button class="fbtn" title="Hoe berekend?" onclick="toggleF('fb-${key}')">?</button>
+        <button class="obtn ${hasOv?'active':''}" id="ov-btn-${key}" title="Manueel aanpassen" onclick="toggleO('${key}',${computedVal},'${labelTxt}','')">✎</button>
+      </td>
+      <td style="color:${prefix==='+'?'#0F6E56':prefix==='−'?'#A32D2D':'inherit'}">${prefix}${fmtE(val)}${hasOv?' *':''}</td>
+    </tr>
+    <tr><td colspan="2" style="padding:0">
+      <div class="fbox" id="fb-${key}">${fboxHTML}</div>
+      <div class="override-row" id="ov-row-${key}">
+        <label>Overschrijf:</label>
+        <input type="number" id="ov-inp-${key}" value="${Math.round(computedVal)}" onchange="overrides['${key}']=parseFloat(this.value)||0;updateCharts()">
+        <button class="reset" onclick="resetOverride('${key}')">↺ herstel berekend</button>
+      </div>
+    </td></tr>`;
+  }
+
+  const rate_=parseFloat(document.getElementById('rate').value);
+  const term_=parseInt(document.getElementById('term').value);
+  const rg_=parseFloat(document.getElementById('rentGrowth').value);
+  const vac_=parseInt(document.getElementById('vacancy').value);
+  const appRate_=parseFloat(document.getElementById('appRate').value);
+  const fix_=s==='A'?parseInt(document.getElementById('fixA').value):parseInt(document.getElementById('fixBC').value);
+  const rent_=parseInt(document.getElementById('rent'+s).value);
+
+  const rentFbox=`
+    <strong>Totale huurinkomsten</strong> = som van jaarlijkse netto huurinkomsten over ${YRS} jaar.<br>
+    Per jaar: <span class="formula">huurprijs × 12 maanden × (1 − leegstand)</span><br>
+    Met huurgroei van ${rg_.toFixed(1).replace('.',',')}%/jaar groeit de huur elk jaar: jaar 1 = ${fmtE(rent_*(1-vac_/100)*12)}, jaar ${YRS} ≈ ${fmtE(rent_*Math.pow(1+rg_/100,YRS-1)*(1-vac_/100)*12)}.<br>
+    Leegstand ${vac_}% = gemiddeld ${Math.round(vac_/100*365)} dagen/jaar zonder huurder.<br>
+    <em>Berekend bedrag: ${fmtE(totRentCalc)}</em>`;
+
+  const loanFbox=`
+    <strong>Totale leningskost</strong> = som van alle maandelijkse afbetalingen over de looptijd.<br>
+    <span class="formula">maandlast × 12 × looptijd</span> = ${fmtE(calcMonthly(f.loan,rate_,term_))}/mnd × 12 × ${term_} jaar.<br>
+    Breakdown: kapitaal (${fmtE(f.loan)}) + interest (${fmtE(totLoanCalc-f.loan)}).<br>
+    Na jaar ${term_} is de lening volledig afbetaald — geen leningskost meer in jaar ${term_+1}–${YRS}.<br>
+    <em>Berekend bedrag: ${fmtE(totLoanCalc)}</em>`;
+
+  const fixFbox=`
+    <strong>Totale vaste kosten</strong> = maandelijkse vaste kosten × 12 × 30 jaar.<br>
+    <span class="formula">${fmtE(fix_)}/mnd × 12 × ${YRS}</span> = ${fmtE(fix_*12*YRS)}<br>
+    Wat zit hierin: onroerende voorheffing, brandverzekering, syndicus, gemeenschappelijke lasten, onderhoudsreserve.<br>
+    Dit bedrag is <em>niet</em> geïndexeerd in dit model — in werkelijkheid stijgen deze kosten mee met de inflatie.<br>
+    <em>Berekend bedrag: ${fmtE(totFixCalc)}</em>`;
+
+  const costFbox=`
+    <strong>Aankoopkosten</strong> = eenmalige kosten bij aankoop.<br>
+    <span class="formula">Registratierechten (12%) + notariskosten + hypotheekkosten</span><br>
+    · Registratierechten: ${fmtE(f.reg)} (= 12% × ${fmtE(f.price)})<br>
+    · Notariskosten: ±${fmtE(f.not)} (degressief tarief op aankoopprijs)<br>
+    · Hypotheek + dossier: ±${fmtE(f.hyp)}<br>
+    Registratierechten 2e woning = altijd 12%, geen verlaagd tarief.<br>
+    <em>Berekend bedrag: ${fmtE(costsCalc)}</em>`;
+
+  const meerwaardeKey='meerwaarde_'+s;
+  const meerwaardeHasOv=meerwaardeKey in overrides;
+  const meerwaardeVal=getVal(meerwaardeKey,meerwaardeCalc);
+  const meerwaardeEindwaarde=Math.round(f.price+meerwaardeVal);
+  const meerwaardeRow=`
+    <tr>
+      <td class="frow" style="color:#5f5e5a;font-style:italic">
+        Meerwaarde bij verkoop
+        <button class="fbtn" title="Hoe berekend?" onclick="toggleF('fb-${meerwaardeKey}')">?</button>
+        <button class="obtn ${meerwaardeHasOv?'active':''}" id="ov-btn-${meerwaardeKey}" title="Manueel aanpassen" onclick="toggleO('${meerwaardeKey}',${meerwaardeCalc},'Meerwaarde bij verkoop','')">✎</button>
+      </td>
+      <td style="color:#854F0B;font-style:italic">+${fmtE(meerwaardeVal)}${meerwaardeHasOv?' *':''}</td>
+    </tr>
+    <tr><td colspan="2" style="padding:0">
+      <div class="fbox" id="fb-${meerwaardeKey}">
+        <strong>Verwachte meerwaarde bij verkoop</strong> na ${YRS} jaar.<br>
+        <span class="formula">aankoopprijs × (1 + groei%)^${YRS} − aankoopprijs</span><br>
+        Bij ${appRate_.toFixed(2).replace('.',',')}% groei/jaar: ${fmtE(f.price)} → ${fmtE(meerwaardeEindwaarde)} = meerwaarde ${fmtE(meerwaardeCalc)}.<br>
+        <strong>⚠ Alleen reëel bij effectieve verkoop.</strong> Meerwaardebelasting (16,5% in Vlaanderen) bij verkoop binnen 5 jaar na aankoop — na 5 jaar is er geen meerwaardebelasting voor particulieren op de 2e woning.<br>
+        <em>Berekend bedrag: ${fmtE(meerwaardeCalc)}</em>
+      </div>
+      <div class="override-row" id="ov-row-${meerwaardeKey}">
+        <label>Overschrijf:</label>
+        <input type="number" id="ov-inp-${meerwaardeKey}" value="${Math.round(meerwaardeCalc)}" onchange="overrides['${meerwaardeKey}']=parseFloat(this.value)||0;updateCharts()">
+        <button class="reset" onclick="resetOverride('${meerwaardeKey}')">↺ herstel berekend</button>
+      </div>
+    </td></tr>`;
+
+  const netColor=net>=0?'#0F6E56':'#A32D2D';
+  const netApColor=netWithAp>=0?'#0F6E56':'#A32D2D';
+  const recColor=rec>=0?'#0F6E56':'#A32D2D';
+  const recApColor=recWithAp>=0?'#0F6E56':'#A32D2D';
+
+  return`<div class="card">
+    <span class="chip ${chipClass}">${label}</span>
+    <table class="rt">
+      ${row('totRent_'+s, totRentCalc, '+', 'Totale huurinkomsten', rentFbox)}
+      ${row('totLoan_'+s, totLoanCalc, '−', 'Totale leningskost', loanFbox)}
+      ${row('totFix_'+s, totFixCalc, '−', 'Totale vaste kosten', fixFbox)}
+      ${row('costs_'+s, costsCalc, '−', 'Aankoopkosten', costFbox)}
+      <tr class="tr"><td>Netto cashflow 30j</td><td style="color:${netColor}">${fmtSign(net)}</td></tr>
+      <tr><td class="mu">Eigen inbreng (${fmtE(own)}) terugverdiend?</td><td class="mu" style="color:${recColor}">${rec>=0?'Ja ('+fmtSign(rec)+')':'Nee (−'+fmtE(Math.abs(rec))+' tekort)'}</td></tr>
+      <tr><td style="height:10px"></td><td></td></tr>
+      ${meerwaardeRow}
+      <tr class="tr" style="background:#FFF8EC;border-radius:6px"><td style="color:#6B4000;font-weight:600">Totaal incl. meerwaarde</td><td style="color:${netApColor};font-weight:600">${fmtSign(netWithAp)}</td></tr>
+      <tr><td class="mu">Eigen inbreng terugverdiend incl. meerwaarde?</td><td class="mu" style="color:${recApColor}">${recWithAp>=0?'Ja ('+fmtSign(recWithAp)+')':'Nee (−'+fmtE(Math.abs(recWithAp))+' tekort)'}</td></tr>
+    </table>
+    ${Object.keys(overrides).some(k=>k.endsWith('_'+s))?`<p style="font-size:11px;color:#854F0B;margin-top:8px">* Aangepast bedrag actief. Klik ↺ om te herstellen.</p>`:''}
+  </div>`;
+}
+
+// ── Main update ────────────────────────────────────────────────────────────────
+function updateCharts(){
+  const pA=parseInt(document.getElementById('priceA').value);
+  const pB=parseInt(document.getElementById('priceB').value);
+  const pC=parseInt(document.getElementById('priceC').value);
+  const oA=parseInt(document.getElementById('ownA').value);
+  const oB=parseInt(document.getElementById('ownB').value);
+  const oC=parseInt(document.getElementById('ownC').value);
+  const rA=parseInt(document.getElementById('rentA').value);
+  const rB=parseInt(document.getElementById('rentB').value);
+  const rC=parseInt(document.getElementById('rentC').value);
+  const rate=parseFloat(document.getElementById('rate').value);
+  const term=parseInt(document.getElementById('term').value);
+  const rg=parseFloat(document.getElementById('rentGrowth').value);
+  const vac=parseInt(document.getElementById('vacancy').value);
+  const fxA=parseInt(document.getElementById('fixA').value);
+  const fxBC=parseInt(document.getElementById('fixBC').value);
+  const appRate=parseFloat(document.getElementById('appRate').value);
+  const YRS=parseInt(document.getElementById('horizon').value);
+
+  // Update slider labels
+  const sv={
+    priceA:pA,priceB:pB,priceC:pC,
+    ownA:oA,ownB:oB,ownC:oC,
+    rentA:rA,rentB:rB,rentC:rC,
+    fixA:fxA,fixBC:fxBC
+  };
+  for(const[k,v]of Object.entries(sv)){
+    const el=document.getElementById(k+'-out');
+    if(el)el.textContent='€'+v.toLocaleString('nl-BE');
+  }
+  document.getElementById('rate-out').textContent=rate.toFixed(1).replace('.',',')+' %';
+  document.getElementById('term-out').textContent=term+' jaar';
+  document.getElementById('rentGrowth-out').textContent=rg.toFixed(1).replace('.',',')+' %';
+  document.getElementById('vacancy-out').textContent=vac+' %';
+  document.getElementById('appRate-out').textContent=appRate.toFixed(2).replace('.',',')+' %';
+  document.getElementById('horizon-out').textContent=YRS+' jaar';
+
+  // Update dynamic titles
+  document.getElementById('tab-btn-cashflow').textContent='Cashflow '+YRS+' jaar';
+  document.getElementById('tab-btn-balans').textContent='Balans na '+YRS+' jaar';
+  document.getElementById('cf-chart-title').textContent='Cumulatieve cashflow over '+YRS+' jaar';
+  document.getElementById('bal-title').textContent='Totaalbalans na '+YRS+' jaar — klik ? voor uitleg, ✎ om te overschrijven';
+  document.getElementById('be-min-title').textContent='Minimale huurprijs voor breakeven na '+YRS+' jaar';
+  document.getElementById('cf-infobox').innerHTML='Cashflow = huurinkomsten − leningskost − vaste kosten, cumulatief over '+YRS+' jaar. Meerwaarde bij verkoop is apart zichtbaar in de Balans-tab. Jaar 1–looptijd: lening loopt. Daarna: enkel vaste kosten en huurinkomsten.';
+
+  const fA=calcFinancing(pA,oA),fB=calcFinancing(pB,oB),fC=calcFinancing(pC,oC);
+  const moA=calcMonthly(fA.loan,rate,term);
+  const moB=calcMonthly(fB.loan,rate,term);
+  const moC=calcMonthly(fC.loan,rate,term);
+
+  // ── Tab 1: Aankoopkosten ──
+  function kostenCard(s,chipC,label,f,mo,price,own){
+    const ltv=f.loan/price*100;
+    const ltvColor=ltv>85?'#A32D2D':ltv>75?'#854F0B':'#0F6E56';
+    const restColor=f.rest<0?'#A32D2D':'inherit';
+    return`<div class="card"><span class="chip ${chipC}">${label}</span>
+      <table class="rt">
+        <tr><td>Aankoopprijs</td><td>${fmtE(price)}</td></tr>
+        <tr><td>Registratierechten (12%)</td><td>${fmtE(f.reg)}</td></tr>
+        <tr><td>Notaris + hypotheek</td><td>±${fmtE(f.not+f.hyp)}</td></tr>
+        <tr><td><strong>Totale aankoopkosten</strong></td><td><strong>±${fmtE(f.costs)}</strong></td></tr>
+        <tr><td style="height:6px"></td><td></td></tr>
+        <tr><td>Eigen inbreng</td><td>${fmtE(own)}</td></tr>
+        <tr><td>Inbreng na kosten</td><td style="color:${restColor}">${f.rest<0?'−'+fmtE(Math.abs(f.rest))+' ⚠':fmtE(f.rest)}</td></tr>
+        <tr class="tr"><td>Te lenen</td><td>${fmtE(f.loan)}</td></tr>
+        <tr><td class="mu">LTV op aankoopprijs</td><td class="mu" style="color:${ltvColor}">${pct(ltv)}</td></tr>
+        <tr><td class="mu">Maandlast</td><td class="mu">${fmtE(mo)}/mnd</td></tr>
+      </table></div>`;
+  }
+  document.getElementById('kosten-cards').innerHTML=
+    kostenCard('A','chip-a','Scenario A',fA,moA,pA,oA)+
+    kostenCard('B','chip-b','Scenario B',fB,moB,pB,oB)+
+    kostenCard('C','chip-c','Scenario C',fC,moC,pC,oC);
+
+  // ── Tab 2: Cashflow ──
+  function moCfCard(s,chipC,label,mo,fix,rent){
+    const net=rent*(1-vac/100)-mo-fix;
+    const col=net>=0?'#0F6E56':'#A32D2D';
+    return`<div class="metric"><p class="ml">${label}</p>
+      <p class="mv" style="color:${col}">${fmtSign(net)}/mnd</p>
+      <p class="ms">huur − lening − kosten</p></div>`;
+  }
+  document.getElementById('cf-mo-cards').innerHTML=
+    moCfCard('A','chip-a','Scenario A',moA,fxA,rA)+
+    moCfCard('B','chip-b','Scenario B',moB,fxBC,rB)+
+    moCfCard('C','chip-c','Scenario C',moC,fxBC,rC);
+
+  const cfA=calcCashflow(fA.loan,moA,fxA,fA.costs,rA,rg,vac,term,YRS);
+  const cfB=calcCashflow(fB.loan,moB,fxBC,fB.costs,rB,rg,vac,term,YRS);
+  const cfC=calcCashflow(fC.loan,moC,fxBC,fC.costs,rC,rg,vac,term,YRS);
+  const labels=Array.from({length:YRS},(_,i)=>'Jaar '+(i+1));
+
+  if(charts.cf)charts.cf.destroy();
+  charts.cf=new Chart(document.getElementById('cfChart'),{
+    type:'line',data:{labels,datasets:[
+      {label:'A',data:cfA.ann,borderColor:'#378ADD',borderWidth:2,pointRadius:0,tension:0.3,fill:false},
+      {label:'B',data:cfB.ann,borderColor:'#1D9E75',borderWidth:2,pointRadius:0,tension:0.3,fill:false},
+      {label:'C',data:cfC.ann,borderColor:'#7F77DD',borderWidth:2,pointRadius:0,tension:0.3,fill:false},
+      {label:'€0',data:Array(YRS).fill(0),borderColor:'#888780',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='€0'?null:'Scenario '+ctx.dataset.label+': €'+Math.round(ctx.parsed.y).toLocaleString('nl-BE')}}},
+      scales:{x:{ticks:{autoSkip:true,maxTicksLimit:8}},y:{ticks:{callback:v=>'€'+(v/1000).toFixed(0)+'k'}}}}
+  });
+
+  // ── Tab 3: Breakeven ──
+  function beYrCard(s,chipC,label,cfData){
+    const yr=findBreakeven(cfData.ann,50);
+    const col=yr&&yr<=YRS?'#0F6E56':yr&&yr<=YRS+10?'#854F0B':'#A32D2D';
+    const sub=yr&&yr<=YRS?'binnen '+YRS+' jaar':yr?`na ${YRS} jaar (jaar ${yr})`:'bij huidige parameters niet';
+    return`<div class="metric"><p class="ml">${label}</p>
+      <p class="mv" style="color:${col}">${yr?'Jaar '+yr:'> '+(YRS+10)+' jr'}</p>
+      <p class="ms">${sub}</p></div>`;
+  }
+  document.getElementById('be-yr-cards').innerHTML=
+    beYrCard('A','chip-a','Scenario A',cfA)+
+    beYrCard('B','chip-b','Scenario B',cfB)+
+    beYrCard('C','chip-c','Scenario C',cfC);
+
+  function beMinCard(s,chipC,label,loan,mo,fix,costs,curRent){
+    const mn=findMinRent(loan,mo,fix,costs,rg,vac,term,YRS);
+    const diff=mn-curRent;
+    const diffCol=diff<=0?'#0F6E56':'#A32D2D';
+    const diffTxt=(diff>0?'+':'')+fmtE(diff)+'/mnd '+(diff<=0?'✓ haalbaar':'↑ te laag');
+    return`<div class="card"><span class="chip ${chipC}">${label}</span>
+      <div class="be-row"><span class="be-label">Huidige huur</span><span class="be-val">${fmtE(curRent)}/mnd</span></div>
+      <div class="be-row"><span class="be-label">Minimaal nodig</span><span class="be-val">${fmtE(mn)}/mnd</span></div>
+      <div class="be-row"><span class="be-label">Verschil</span><span class="be-val" style="color:${diffCol}">${diffTxt}</span></div>
+    </div>`;
+  }
+  document.getElementById('be-min-cards').innerHTML=
+    beMinCard('A','chip-a','Scenario A',fA.loan,moA,fxA,fA.costs,rA)+
+    beMinCard('B','chip-b','Scenario B',fB.loan,moB,fxBC,fB.costs,rB)+
+    beMinCard('C','chip-c','Scenario C',fC.loan,moC,fxBC,fC.costs,rC);
+
+  const growthSteps=[0,0.5,1,1.5,2,2.5,3];
+  if(charts.be)charts.be.destroy();
+  charts.be=new Chart(document.getElementById('beChart'),{
+    type:'line',
+    data:{labels:growthSteps.map(g=>g.toFixed(1).replace('.',',')+' %'),datasets:[
+      {label:'A',data:growthSteps.map(g=>findMinRent(fA.loan,moA,fxA,fA.costs,g,vac,term,YRS)),borderColor:'#378ADD',borderWidth:2,pointRadius:3,tension:0.3,fill:false},
+      {label:'B',data:growthSteps.map(g=>findMinRent(fB.loan,moB,fxBC,fB.costs,g,vac,term,YRS)),borderColor:'#1D9E75',borderWidth:2,pointRadius:3,borderDash:[5,3],tension:0.3,fill:false},
+      {label:'C',data:growthSteps.map(g=>findMinRent(fC.loan,moC,fxBC,fC.costs,g,vac,term,YRS)),borderColor:'#7F77DD',borderWidth:2,pointRadius:3,borderDash:[2,3],tension:0.3,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Scenario '+ctx.dataset.label+': €'+ctx.parsed.y.toLocaleString('nl-BE')+'/mnd'}}},
+      scales:{x:{title:{display:true,text:'Huurgroei/jaar',font:{size:11},color:'#888780'}},
+              y:{ticks:{callback:v=>'€'+v.toLocaleString('nl-BE')},title:{display:true,text:'Min. huurprijs/mnd',font:{size:11},color:'#888780'}}}}
+  });
+
+  // ── Tab 4: Balans ──
+  document.getElementById('bal-cards').innerHTML=
+    balCard('A','chip-a','Scenario A',cfA,fA,oA,YRS,appRate)+
+    balCard('B','chip-b','Scenario B',cfB,fB,oB,YRS,appRate)+
+    balCard('C','chip-c','Scenario C',cfC,fC,oC,YRS,appRate);
+
+  if(charts.bal)charts.bal.destroy();
+  charts.bal=new Chart(document.getElementById('balChart'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Cashflow A',data:cfA.ann,borderColor:'#378ADD',borderWidth:2,pointRadius:0,tension:0.3,fill:false},
+      {label:'Cashflow B',data:cfB.ann,borderColor:'#1D9E75',borderWidth:2,pointRadius:0,tension:0.3,fill:false},
+      {label:'Cashflow C',data:cfC.ann,borderColor:'#7F77DD',borderWidth:2,pointRadius:0,tension:0.3,fill:false},
+      {label:'Waarde A',data:Array.from({length:YRS},(_,i)=>Math.round(pA*Math.pow(1+appRate/100,i+1))),borderColor:'#378ADD',borderWidth:1.5,borderDash:[6,3],pointRadius:0,tension:0.3,fill:false},
+      {label:'Waarde B/C',data:Array.from({length:YRS},(_,i)=>Math.round(pB*Math.pow(1+appRate/100,i+1))),borderColor:'#1D9E75',borderWidth:1.5,borderDash:[6,3],pointRadius:0,tension:0.3,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': €'+Math.round(ctx.parsed.y).toLocaleString('nl-BE')}}},
+      scales:{x:{ticks:{autoSkip:true,maxTicksLimit:8}},y:{ticks:{callback:v=>'€'+(v/1000).toFixed(0)+'k'}}}}
+  });
+}
+
+function showTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  setTimeout(updateCharts,50);
+}
+
+['priceA','priceB','priceC','ownA','ownB','ownC','rentA','rentB','rentC',
+ 'rate','term','rentGrowth','vacancy','appRate','horizon','fixA','fixBC'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updateCharts);
+});
+
+updateCharts();
+</script>
+</body>
+</html>
